@@ -24,7 +24,7 @@
     --region us-central1 \
     --no-allow-unauthenticated
   ```
-    > **Note:** `--no-allow-unauthenticated` keeps the service off the public internet. Only principals you grant `roles/run.invoker` can call it. (The deployer can also call it.)
+  > Note: `--no-allow-unauthenticated` keeps the service off the public internet. Only principals you grant `roles/run.invoker` can call it. (The deployer can also call it.)
 
 2. Optional: Set IAM roles for other users or service accounts
   ```bash

@@ -3,38 +3,58 @@ from flask import Flask, jsonify, request
 from google.cloud import firestore
 
 app = Flask(__name__)
-db = firestore.Client()  # uses the service account attached to Cloud Run
+db = firestore.Client()  # Uses the service account attached to Cloud Run
 
 # Health check
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
 
-# Fetch all documents from 'entries' collection
-@app.route("/entries", methods=["GET"])
-def fetch_all_entries():
-    entries_ref = db.collection("entries")
-    docs = entries_ref.stream()
-    
-    entries = [{"id": doc.id, **doc.to_dict()} for doc in docs]
-    return jsonify(entries)
-
-# Add a new entry, using current UTC date
 @app.route("/add_entry", methods=["POST"])
 def add_entry():
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request must be JSON"}), 400
 
-    weight = data.get("weight")
-    if weight is None:
-        return jsonify({"error": "weight is required"}), 400
+    # Validate all required fields
+    required_fields = ["date", "weight"]
+    missing_fields = []
+    for field in required_fields:
+        if field not in data:
+            missing_fields.append(field)
+    if missing_fields:
+        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
-    # Get current UTC date
-    created_on = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Validate and normalize date
+    try:
+        day = datetime.strptime(data["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD"}), 400
 
-    # Add document to Firestore
-    doc_ref = db.collection("entries").add({
-        "created_on": created_on,
-        "weight": weight
+    # Validate weight
+    try:
+        weight = float(data["weight"])
+        if weight <= 0:
+            return jsonify({"error": "Weight must be greater than 0"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid weight. Please enter a number"}), 400
+
+    # Use normalized date for document ID
+    doc_ref = db.collection("bodyweight").document(day.strftime("%Y-%m-%d"))
+
+    # Prevent duplicate entries
+    if doc_ref.get().exists:
+        return jsonify({"error": "Entry already exists for this date"}), 409
+
+    # Update database
+    doc_ref.create({
+    "day": day,
+    "weight": weight
     })
 
-    return jsonify({"id": doc_ref[1].id, "created_on": created_on, "message": "Entry added"}), 201
+    return jsonify({
+        "id": doc_ref.id,
+        "day": day.strftime("%Y-%m-%d"),
+        "weight": weight,
+        "message": "Entry added"
+    }), 201

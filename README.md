@@ -15,9 +15,9 @@
   gcloud firestore databases create --region=us-central
   ```
 
-## Deploying API Instructions
+## Deploy API
 
-1. From this directory deploy the Cloud Run Function
+1. Deploy Cloud Run Function (run from root of directory)
   ```bash
   gcloud run deploy prep-tracker-api \
     --source . \
@@ -26,7 +26,7 @@
   ```
   > Note: `--no-allow-unauthenticated` keeps the service off the public internet. Only principals you grant `roles/run.invoker` can call it. (The deployer can also call it.)
 
-2. Optional: Set IAM roles for other users or service accounts
+(Optional) Set IAM roles for other users or service accounts
   ```bash
   gcloud run services add-iam-policy-binding prep-tracker-api \
     --region us-central1 \
@@ -34,7 +34,7 @@
     --role="roles/run.invoker"
   ```
 
-## Test calling the API yourself
+## Testing
 
 1. Retrieve the service URL either from the Cloud Console or via the CLI:
   ```bash
